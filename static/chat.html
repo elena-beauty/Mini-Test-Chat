@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Application</title>
+    <style>
+        /* Existing styles remain unchanged */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f9;
+        }
+        .chat-container {
+            width: 800px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-history {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-history .message {
+            margin: 4px 0;
+            padding: 4px 20px;
+            border-radius: 16px;
+            max-width: 70%;
+            word-wrap: break-word;
+            display: inline-block;
+        }
+        .chat-history .sent {
+            background: #d0dbf2;
+            align-self: flex-end;
+            text-align: right;
+            border-radius: 8px;
+            padding: 4px;
+        }
+        .chat-history .received {
+            background: #e9f9be;
+            align-self: flex-start;
+            text-align: left;
+            border-radius: 8px;
+            padding: 4px;
+        }
+        .chat-input {
+            display: flex;
+            padding: 8px;
+            background: #f4f4f9;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 8px;
+        }
+        .chat-input button {
+            padding: 8px 16px;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .chat-input button:hover {
+            background: #0056b3;
+        }
+        .chat-input .file-input {
+            margin-right: 8px;
+        }
+        .signout-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #ccc;
+            color: #333;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .signout-button:hover {
+            background-color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <button id="signout-button" class="signout-button">Sign Out</button>
+
+        <div class="chat-history" id="chat-history"></div>
+        <div class="chat-input">
+            <input type="file" id="file-input" class="file-input" accept="video/*" />
+            <button id="record-voice-button">Record Voice</button>
+            <input type="text" id="chat-input" placeholder="Type your message..." />
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chatHistory = document.getElementById('chat-history');
+        const chatInput = document.getElementById('chat-input');
+        const sendButton = document.getElementById('send-button');
+        const fileInput = document.getElementById('file-input');
+        const recordVoiceButton = document.getElementById('record-voice-button');
+
+        const signoutButton = document.getElementById('signout-button');
+
+        const accessToken = localStorage.getItem('access_token');
+        if (!accessToken) {
+            alert('You are not authenticated. Please log in.');
+            window.location.href = '/static/login.html'; // Redirect to login page
+        }
+
+        const ws = new WebSocket(`ws://127.0.0.1:8000/ws?token=${accessToken}`);
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            const message = document.createElement('p');
+            message.className = data.status === 'success' ? 'received' : 'error';
+            message.textContent = data.message;
+            chatHistory.appendChild(message);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        };
+
+        let offset = 0; // Initialize offset for pagination
+        const limit = 5; // Number of messages to fetch per request
+        let isLoading = false;
+
+        async function fetchChatHistory(limit = 5, offset = 0, appendToTop = false) {
+            try {
+                const response = await fetch(`http://127.0.0.1:8000/messages/?limit=${limit}&offset=${offset}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch chat history');
+                }
+
+                const data = await response.json();
+                const messages = data.messages;
+
+                // Append messages to the chat history
+                messages.reverse().forEach((message) => {
+                    const messageElement = document.createElement('p');
+                    messageElement.className = message.is_bot ? 'received' : 'sent';
+                    messageElement.textContent = message.content;
+
+                    if (appendToTop) {
+                        chatHistory.prepend(messageElement); // Add messages to the top
+                    } else {
+                        chatHistory.appendChild(messageElement); // Add messages to the bottom
+                    }
+                });
+
+                if (!appendToTop) {
+                    chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the bottom
+                }
+            } catch (error) {
+                console.error('Error fetching chat history:', error);
+            } finally {
+                isLoading = false; // Reset loading state
+            }
+        }
+
+        // Fetch initial chat history
+        fetchChatHistory(limit, offset);
+
+        // Add scroll event listener to load more messages when scrolling up
+        chatHistory.addEventListener('scroll', async () => {
+            if (chatHistory.scrollTop === 0 && !isLoading) {
+                isLoading = true; // Set loading state
+                offset += limit; // Increment offset for the next batch of messages
+                await fetchChatHistory(limit, offset, true); // Fetch messages and append to the top
+            }
+        });
+        sendButton.addEventListener('click', () => {
+            const message = chatInput.value.trim();
+            if (message) {
+                const payload = {
+                    type: 'text',
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    message: message
+                };
+                const messageElement = document.createElement('p');
+                messageElement.className = 'sent';
+                messageElement.textContent = message;
+                chatHistory.appendChild(messageElement);
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+
+                ws.send(JSON.stringify(payload));
+                chatInput.value = '';
+            }
+        });
+
+        chatInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendButton.click();
+            }
+        });
+
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const payload = {
+                        type: 'video',
+                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                        message: reader.result // Base64 encoded video
+                    };
+                    const messageElement = document.createElement('p');
+                    messageElement.className = 'sent';
+                    messageElement.textContent = `Video: ${file.name}`;
+                    chatHistory.appendChild(messageElement);
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+
+                    ws.send(JSON.stringify(payload));
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        let mediaRecorder;
+        let audioChunks = [];
+
+        recordVoiceButton.addEventListener('click', async () => {
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const payload = {
+                            user_id: 3,
+                            type: 'voice',
+                            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                            message: reader.result // Base64 encoded audio
+                        };
+                        const messageElement = document.createElement('p');
+                        messageElement.className = 'sent';
+                        messageElement.textContent = 'Voice message sent';
+                        chatHistory.appendChild(messageElement);
+                        chatHistory.scrollTop = chatHistory.scrollHeight;
+
+                        ws.send(JSON.stringify(payload));
+                    };
+                    reader.readAsDataURL(audioBlob);
+                    audioChunks = [];
+                };
+
+                mediaRecorder.start();
+                recordVoiceButton.textContent = 'Stop Recording';
+            } else if (mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                recordVoiceButton.textContent = 'Record Voice';
+            }
+        });
+
+        signoutButton.addEventListener('click', () => {
+            localStorage.removeItem('access_token'); // Remove the access token
+            window.location.href = '/static/login.html'; // Redirect to login page
+        });
+    </script>
+</body>
+</html>

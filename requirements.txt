@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+httpx
+pytz
+websockets
+openai==0.28.0
+psycopg2-binary
+sqlalchemy
+azure-ai-inference
+passlib[bcrypt]
+python-jose
