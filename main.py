@@ -23,6 +23,8 @@ app.add_middleware(
 )
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/style", StaticFiles(directory="style"), name="style")
+
 @app.get("/")
 def root() -> dict[str, str]:
     return {"message": "Hello"}
@@ -100,3 +102,15 @@ def retrieve_messages(
     messages = get_messages(db, user_id=current_user.id, limit=limit, offset=offset)
     messages_json = jsonable_encoder(messages)
     return {"messages": messages_json, "limit": limit, "offset": offset}
+
+@app.get("/me")
+def get_current_user_info(
+    request: Request, db: Session = Depends(get_db)
+):
+    """
+    API endpoint to get the current user's information.
+    """
+    auth_header = request.headers.get("Authorization")
+    token = auth_header.split(" ")[1]
+    current_user = get_current_user(token, db=db)
+    return {"user_id": current_user.id, "name": current_user.name, "email": current_user.email}
