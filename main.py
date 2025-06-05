@@ -88,7 +88,7 @@ def create_message(user_id: int, message_type: str, content: str, db: Session = 
 @app.get("/messages/")
 def retrieve_messages(
     request: Request, 
-    limit: int = Query(5, ge=1, le=100),
+    limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):

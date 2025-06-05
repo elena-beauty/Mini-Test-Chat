@@ -16,7 +16,7 @@ def add_message(db: Session, user_id: int, message_type: str, content: str, is_b
     db.refresh(new_message)
     return new_message
 
-def get_messages(db: Session, user_id: int, limit: int = 5, offset: int = 0):
+def get_messages(db: Session, user_id: int, limit: int, offset: int):
     """
     Retrieve chat messages from the database.
     If user_id is provided, filter messages by user_id.
@@ -25,7 +25,7 @@ def get_messages(db: Session, user_id: int, limit: int = 5, offset: int = 0):
     return (
         db.query(ChatHistory)
         .filter(ChatHistory.user_id == user_id)
-        .order_by(ChatHistory.created_at.desc())  # Order messages by timestamp (most recent first)
+        .order_by(ChatHistory.created_at.desc())
         .offset(offset)
         .limit(limit)
         .all()

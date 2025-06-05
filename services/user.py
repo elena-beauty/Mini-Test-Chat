@@ -1,12 +1,14 @@
+import os
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from model.user import User
+from dotenv import load_dotenv
 
-
-SECRET_KEY = ""
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 300
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

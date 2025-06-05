@@ -14,7 +14,7 @@
         </div>
         <button id="signout-button" class="signout-button">Sign Out</button>
 
-        <div class="chat-history" id="chat-history"></div>
+        <div class="chat-history" id="chat-history" style="overflow-y: auto; height: 80vh;"></div>
         <div class="chat-input">
             <div class="input-container">
                 <input type="text" id="chat-input" placeholder="Type your message..." />
@@ -25,13 +25,12 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { fetchChatHistory, fetchUserName } from './chatUtils.js';
+
         const chatHistory = document.getElementById('chat-history');
         const chatInput = document.getElementById('chat-input');
         const sendButton = document.getElementById('send-button');
-        const fileInput = document.getElementById('file-input');
-        const recordVoiceButton = document.getElementById('record-voice-button');
-
         const signoutButton = document.getElementById('signout-button');
 
         const accessToken = localStorage.getItem('access_token');
@@ -52,78 +51,34 @@
         };
 
         let offset = 0;
-        const limit = 5;
+        const limit = 10;
         let isLoading = false;
-        async function fetchUserName() {
-            try {
-                const response = await fetch(`/me?token=${accessToken}`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                if (!response.ok) {
-                    throw new Error("Failed to fetch user details");
-                }
-                const data = await response.json();
-                const userName = data.name || "User";
-                document.getElementById("top-left").innerText = `Hi ${userName}, How are you?`;
-            } catch (error) {
-                console.error("Error fetching user details:", error);
-                document.getElementById("top-left").innerText = "Hi User";
-            }
-        }
-        fetchUserName();
 
-        async function fetchChatHistory(limit = 5, offset = 0, appendToTop = false) {
-            try {
-                const response = await fetch(`http://127.0.0.1:8000/messages/?limit=${limit}&offset=${offset}`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+        // Fetch initial chat history
+        const loadInitialMessages = async () => {
+            await fetchChatHistory(limit, offset, accessToken, chatHistory, false);
+            chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the bottom initially
+        };
 
-                if (!response.ok) {
-                    throw new Error('Failed to fetch chat history');
-                }
+        loadInitialMessages();
 
-                const data = await response.json();
-                const messages = data.messages;
+        // Fetch user name
+        fetchUserName(accessToken).then((userName) => {
+            document.getElementById('top-left').textContent = `Welcome, ${userName}`;
+        });
 
-                messages.reverse().forEach((message) => {
-                    const messageElement = document.createElement('p');
-                    messageElement.className = message.is_bot ? 'received' : 'sent';
-                    messageElement.textContent = message.content;
-
-                    if (appendToTop) {
-                        chatHistory.prepend(messageElement);
-                    } else {
-                        chatHistory.appendChild(messageElement);
-                    }
-                });
-
-                if (!appendToTop) {
-                    chatHistory.scrollTop = chatHistory.scrollHeight;
-                }
-            } catch (error) {
-                console.error('Error fetching chat history:', error);
-            } finally {
-                isLoading = false; // Reset loading state
-            }
-        }
-
-        fetchChatHistory(limit, offset);
-
+        // Scroll event listener to fetch more messages when scrolling to the top
         chatHistory.addEventListener('scroll', async () => {
-            if (chatHistory.scrollTop === 0 && !isLoading) {
+            // Check if the user is close to the top of the chat history
+            if (chatHistory.scrollTop <= 200 && !isLoading) {
                 isLoading = true;
                 offset += limit;
-                await fetchChatHistory(limit, offset, true);
+                await fetchChatHistory(limit, offset, accessToken, chatHistory, true);
+                isLoading = false;
             }
         });
+
+        // Send message logic
         sendButton.addEventListener('click', () => {
             const message = chatInput.value.trim();
             if (message) {
@@ -149,70 +104,7 @@
             }
         });
 
-        fileInput.addEventListener('change', () => {
-            const file = fileInput.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const payload = {
-                        type: 'video',
-                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                        message: reader.result
-                    };
-                    const messageElement = document.createElement('p');
-                    messageElement.className = 'sent';
-                    messageElement.textContent = `Video: ${file.name}`;
-                    chatHistory.appendChild(messageElement);
-                    chatHistory.scrollTop = chatHistory.scrollHeight;
-
-                    ws.send(JSON.stringify(payload));
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        let mediaRecorder;
-        let audioChunks = [];
-
-        recordVoiceButton.addEventListener('click', async () => {
-            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-
-                mediaRecorder.ondataavailable = (event) => {
-                    audioChunks.push(event.data);
-                };
-
-                mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        const payload = {
-                            user_id: 3,
-                            type: 'voice',
-                            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                            message: reader.result // Base64 encoded audio
-                        };
-                        const messageElement = document.createElement('p');
-                        messageElement.className = 'sent';
-                        messageElement.textContent = 'Voice message sent';
-                        chatHistory.appendChild(messageElement);
-                        chatHistory.scrollTop = chatHistory.scrollHeight;
-
-                        ws.send(JSON.stringify(payload));
-                    };
-                    reader.readAsDataURL(audioBlob);
-                    audioChunks = [];
-                };
-
-                mediaRecorder.start();
-                recordVoiceButton.textContent = 'Stop';
-            } else if (mediaRecorder.state === 'recording') {
-                mediaRecorder.stop();
-                recordVoiceButton.textContent = 'Voice';
-            }
-        });
-
+        // Sign out logic
         signoutButton.addEventListener('click', () => {
             localStorage.removeItem('access_token');
             window.location.href = '/static/login.html';

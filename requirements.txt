@@ -9,3 +9,4 @@ sqlalchemy
 azure-ai-inference
 passlib[bcrypt]
 python-jose
+python-dotenv

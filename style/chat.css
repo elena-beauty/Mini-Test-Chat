@@ -20,10 +20,12 @@ body {
 .chat-history {
     flex: 1;
     padding: 16px;
-    overflow-y: auto;
+    overflow-y: auto; /* Enable vertical scrolling */
     border-bottom: 1px solid #ddd;
     display: flex;
     flex-direction: column;
+    max-height: calc(80vh - 100px); /* Ensure it fits within the viewport */
+    height: 100%; /* Allow dynamic height adjustment */
 }
 .chat-history .message {
     margin: 4px 0;
@@ -78,11 +80,11 @@ body {
 }
 
 #file-input-icon {
-    right: 40px; /* Position for the file attachment icon */
+    right: 40px;
 }
 
 #record-voice-icon {
-    right: 10px; /* Position for the voice icon */
+    right: 10px;
 }
 
 #send-button {

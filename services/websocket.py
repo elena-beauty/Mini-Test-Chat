@@ -11,13 +11,15 @@ import base64
 from azure.ai.inference import ChatCompletionsClient
 from azure.ai.inference.models import SystemMessage, UserMessage
 from azure.core.credentials import AzureKeyCredential
+from dotenv import load_dotenv
 
+load_dotenv()
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-endpoint = "https://models.github.ai/inference"
-model = "openai/gpt-4.1-mini"
-token = ""
+endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+model = os.getenv("AZURE_OPENAI_MODEL", "openai/gpt-4.1-mini")
+token = os.getenv("AZURE_OPENAI_API_KEY")
 
 client = ChatCompletionsClient(
     endpoint=endpoint,
