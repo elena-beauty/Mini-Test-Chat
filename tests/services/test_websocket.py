@@ -6,7 +6,7 @@ from services.websocket import (
     call_openai_api,
     websocket_logic,
 )
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy.orm import Session
 from datetime import datetime
 import pytz

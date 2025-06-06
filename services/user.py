@@ -40,7 +40,12 @@ def signup_user(db: Session, request: dict):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return {"message": "User created successfully", "user_id": new_user.id}
+    return {
+        "id": new_user.id,
+        "name": new_user.name,
+        "email": new_user.email,
+        "gender": new_user.gender,
+    }
 
 def login_user(db: Session, request: dict):
     user = db.query(User).filter(User.email == request.email).first()
