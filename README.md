@@ -28,6 +28,64 @@ Messages outside these time windows are rejected, and the client is notified of 
 - Messages are saved to a database.
 - An API is provided to retrieve messages with pagination, suitable for common chat screens like LINE, WhatsApp, or Telegram.
 
+
+
+---
+
+## Sequence Diagram
+### Client Connection
+1. User opens the chat interface ([`static/chat.html`]
+2. WebSocket connection is established via [`services/websocket.py`]
+3. User authentication is verified using [`services/user.py`]
+
+### Message Handling
+1. Client sends a message via WebSocket.
+2. Message is processed by [`services/websocket.py`]
+3. Message is stored in the database using [`services/chat_history.py`]
+4. Message is broadcasted to other connected clients.
+
+### Client Disconnection
+1. Client disconnects from WebSocket.
+2. [`services/websocket.py`]
+3. Disconnection is logged for monitoring purposes.
+
+---
+
+## Scalability Considerations
+- **Horizontal Scaling**: Deploy multiple instances of the WebSocket service behind a load balancer.
+- **Database Optimization**: Use indexing and caching for frequently accessed chat history.
+- **Static File Delivery**: Serve frontend files via a CDN for faster access.
+
+---
+
+## Implementation Plan
+1. **Environment Setup**:
+   - Configure dependencies using [`pyproject.toml`] and [`requirements.txt`]
+   - Set up Docker containers using [`docker-compose.yaml`]
+
+2. **Backend Development**:
+   - Implement WebSocket logic in [`services/websocket.py`]Mini-Test-Chat/services/websocket.py.
+   - Develop chat history and user management modules ([`services/chat_history.py`]Mini-Test-Chat/services/chat_history.py"), [`services/user.py`]
+
+3. **Frontend Design**:
+   - Create user interfaces ([`static/chat.html`]
+   Mini-Test-Chat/static/chat.html"), [`static/login.html`]
+   Mini-Test-Chat/static/login.html"), [`static/signup.html`]
+   - Add WebSocket client logic in [`static/chatUtils.js`]
+
+4. **Testing**:
+   - Write unit tests [`tests/services/test_websocket.py`]
+   - Validate WebSocket connection and disconnection handling.
+
+5. **Deployment**:
+   - Deploy the application using Docker.
+   - Monitor system performance and scale as needed.
+
+---
+
+## Additional Notes
+For detailed instructions on running the application, refer to the [Getting Started](#getting-started) section.
+
 ## Constraints
 - A maximum of **50 clients** can communicate with the server simultaneously.
 - A maximum of **500 messages** can be processed by the server at any time.
@@ -53,15 +111,50 @@ The application is built using the following technologies:
 
 Follow these steps to set up the project locally:
 
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/your-username/realtime-chat-app.git
-   cd realtime-chat-app 
+## Getting Started
+
+Follow the steps below to set up and run the application locally.
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/elena-beauty/Mini-Test-Chat.git
+cd Mini-Test-Chat
+```
 
 2. **Run in local**:
-    ``` 
-    pip3 install -r requirements.txt
+    ```bash
+    Run docker with: 
+    $ docker-compose up 
+    to start Database postgres
+    ```
 
-    uvicorn main:app --reload
+3. **Create table in database**
+```bash
+-- Create the users table
+CREATE TABLE users (
+   id SERIAL PRIMARY KEY,
+   name VARCHAR NOT NULL,
+   email VARCHAR UNIQUE NOT NULL,
+   gender VARCHAR NOT NULL,
+   password VARCHAR NOT NULL
+);
 
-    kill -9 $(lsof -ti :8000)
+-- Create the chat_histories table
+CREATE TABLE chat_histories (
+   id SERIAL PRIMARY KEY,
+   user_id VARCHAR NOT NULL,
+   message_type VARCHAR NOT NULL,
+   content VARCHAR NOT NULL,
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+   is_bot VARCHAR DEFAULT 'False'
+);
+```
+
+4, **Run in terminal to start server**
+   ```bash
+   pip3 install -r requirements.txt
+
+   uvicorn main:app --reload
+
+   kill -9 $(lsof -ti :8000)
+   ```
