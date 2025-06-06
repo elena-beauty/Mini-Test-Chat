@@ -69,20 +69,6 @@ async def websocket_endpoint(websocket: WebSocket, db: Session = Depends(get_db)
     """
     await websocket_logic(websocket, db)
 
-@app.get("/users/{user_id}", response_model=UserResponse)
-def read_user(user_id: int, db: Session = Depends(get_db)):
-    """
-    API endpoint to get a user by ID.
-    """
-    return get_user_by_id(db, user_id)
-
-@app.get("/users/", response_model=list[UserResponse])
-def list_users(db: Session = Depends(get_db)):
-    """
-    API endpoint to list all users.
-    """
-    return get_all_users(db)
-
 @app.post("/signup/", response_model=UserResponse)
 def signup(request: SignupRequest, db: Session = Depends(get_db)):
     """
