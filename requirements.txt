@@ -10,3 +10,4 @@ azure-ai-inference
 passlib[bcrypt]
 python-jose
 python-dotenv
+pytest

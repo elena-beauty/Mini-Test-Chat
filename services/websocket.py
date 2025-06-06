@@ -36,7 +36,7 @@ def is_message_acceptable(client_timezone: str, message_type: str) -> bool:
         elif message_type == "voice":
             return 8 <= hour < 12
         elif message_type == "video":
-            return 2 <= hour < 24
+            return 12 <= hour < 24
         else:
             return False
     except Exception as e:
@@ -51,8 +51,13 @@ def save_file(file_data: str, file_type: str) -> str:
     file_name = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{random.randint(1000, 9999)}.{file_extension}"
     file_path = os.path.join(UPLOAD_DIR, file_name)
 
+    if not file_data:
+        raise ValueError("File content is missing in file_data")
+
+    file_path = os.path.join(UPLOAD_DIR, file_name)
+
     with open(file_path, "wb") as file:
-        file.write(base64.b64decode(file_data.split(",")[1]))
+        file.write(base64.b64decode(file_data))
 
     return file_path
 

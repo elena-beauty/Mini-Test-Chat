@@ -22,7 +22,12 @@ export async function fetchChatHistory(limit, offset, accessToken, chatHistory, 
         messages.reverse().forEach((message) => {
             const messageElement = document.createElement('p');
             messageElement.className = message.is_bot ? 'received' : 'sent';
-            messageElement.textContent = message.content;
+            if (/\*\*(.*?)\*\*/.test(message.content)) {
+                messageElement.innerHTML = message.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            }
+            else {
+                messageElement.textContent = message.content;
+            }
 
             if (appendToTop) {
                 chatHistory.prepend(messageElement);

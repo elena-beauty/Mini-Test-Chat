@@ -49,9 +49,7 @@ body {
     border-radius: 8px;
     padding: 8px; /* Increased padding for better readability */
     font-size: 14px; /* Adjust font size for readability */
-    line-height: 1.6; /* Add line height for better spacing between lines */
     white-space: pre-wrap; /* Preserve line breaks in the text */
-    font-weight: bold; /* Make the text bold */
     word-wrap: break-word; /* Ensure long words break properly */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Add a subtle shadow for better aesthetics */
 }
@@ -59,6 +57,11 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.chat-history .highlighted {
+    font-size: 18px;
+    font-weight: bold;
 }
 
 .input-container {

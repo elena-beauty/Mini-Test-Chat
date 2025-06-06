@@ -32,7 +32,8 @@
         const chatInput = document.getElementById('chat-input');
         const sendButton = document.getElementById('send-button');
         const signoutButton = document.getElementById('signout-button');
-
+        const recordVoiceIcon = document.getElementById('record-voice-icon');
+        
         const accessToken = localStorage.getItem('access_token');
         if (!accessToken) {
             alert('You are not authenticated. Please log in.');
@@ -104,6 +105,65 @@
             }
         });
 
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        recordVoiceIcon.addEventListener('click', async () => {
+            try {
+                if (!isRecording) {
+                    // Start recording
+                    isRecording = true;
+                    recordVoiceIcon.classList.remove('fa-microphone');
+                    recordVoiceIcon.classList.add('fa-stop');
+                    recordVoiceIcon.style.color = 'red';
+
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            const base64Audio = reader.result.split(',')[1]; // Extract base64 data
+                            const payload = {
+                                type: 'voice',
+                                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                                message: base64Audio // Send base64-encoded audio data
+                            };
+
+                            ws.send(JSON.stringify(payload));
+
+                            const messageElement = document.createElement('p');
+                            messageElement.className = 'sent';
+                            messageElement.textContent = '[Voice Message Sent]';
+                            chatHistory.appendChild(messageElement);
+                            chatHistory.scrollTop = chatHistory.scrollHeight;
+
+                            audioChunks = []; // Reset audio chunks
+                        };
+                        reader.readAsDataURL(audioBlob); // Read the blob as a base64 string
+                    };
+
+                    mediaRecorder.start();
+                } else {
+                    isRecording = false;
+                    recordVoiceIcon.classList.remove('fa-stop');
+                    recordVoiceIcon.classList.add('fa-microphone');
+                    recordVoiceIcon.style.color = '';
+
+                    mediaRecorder.stop();
+                }
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                alert('Unable to access microphone. Please check your browser settings.');
+            }
+        });
         // Sign out logic
         signoutButton.addEventListener('click', () => {
             localStorage.removeItem('access_token');
